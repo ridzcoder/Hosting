@@ -1,30 +1,41 @@
+// src/services/seedAdmin.js
 const bcrypt = require('bcryptjs');
-const db = require('../db');
+const { getUserByEmail, createUser, setAdmin } = require('../db');
 
-// Creates the admin account from ADMIN_EMAIL / ADMIN_PASSWORD on first
-// boot. If that account already exists, this only makes sure the
-// is_admin flag is set — it never touches the stored password, so
-// restarting the server doesn't clobber a password you've since
-// changed some other way.
 async function seedAdmin() {
-  const email = process.env.ADMIN_EMAIL;
-  const password = process.env.ADMIN_PASSWORD;
-  if (!email || !password) {
-    console.log('[admin] ADMIN_EMAIL / ADMIN_PASSWORD not set — skipping admin seed.');
-    return;
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    
+    // Check if admin already exists
+    let admin = getUserByEmail(adminEmail);
+    
+    if (!admin) {
+      // Create admin user
+      const passwordHash = await bcrypt.hash(adminPassword, 10);
+      admin = createUser({
+        email: adminEmail,
+        passwordHash,
+        startingCoins: 999999,
+      });
+      
+      // Set as admin
+      setAdmin(admin.id, true);
+      console.log('✅ Admin user created:', adminEmail);
+    } else {
+      // Ensure existing admin has admin privileges
+      if (!admin.is_admin) {
+        setAdmin(admin.id, true);
+        console.log('✅ Admin privileges granted to:', adminEmail);
+      }
+      console.log('✅ Admin user already exists:', adminEmail);
+    }
+    
+    return admin;
+  } catch (error) {
+    console.error('❌ Error seeding admin:', error);
+    throw error;
   }
-
-  const existing = db.getUserByEmail(email);
-  if (existing) {
-    if (!existing.is_admin) db.setAdmin(existing.id, true);
-    return;
-  }
-
-  const passwordHash = await bcrypt.hash(password, 10);
-  const admin = db.createUser({ email, passwordHash, startingCoins: 0 });
-  db.markVerified(admin.id);
-  db.setAdmin(admin.id, true);
-  console.log(`[admin] Created admin account for ${email}`);
 }
 
 module.exports = { seedAdmin };
