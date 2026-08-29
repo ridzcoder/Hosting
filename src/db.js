@@ -1,13 +1,4 @@
-// SQLite is used here for zero-config local/dev storage — a single file
-// on disk, nothing to install or provision.
-//
-// IMPORTANT if you deploy this platform itself to Vercel: Vercel's serverless
-// filesystem is ephemeral AND read-only outside /tmp, so a SQLite file
-// here gets wiped (or fails to write at all) on every restart or deploy.
-// Swap this file for Vercel Postgres (the `@vercel/postgres` package) before 
-// you rely on this in production — every route only calls the functions exported
-// below, so that swap stays contained to this one file. See README.md.
-
+// src/db.js
 const path = require('path');
 const crypto = require('crypto');
 const Database = require('better-sqlite3');
@@ -18,30 +9,36 @@ const fs = require('fs');
 const DB_DIR = process.env.VERCEL ? '/tmp' : path.join(__dirname, '..', 'data');
 const DB_PATH = path.join(DB_DIR, 'platform.db');
 
-// Ensure the directory exists (for /tmp it always exists)
+// Ensure the directory exists
 if (!process.env.VERCEL && !fs.existsSync(DB_DIR)) {
   fs.mkdirSync(DB_DIR, { recursive: true });
 }
 
 // ── Initialize or recover database ──────────────────────
+let db;
+
 function initDatabase() {
   // If database exists, try to open it
   if (fs.existsSync(DB_PATH)) {
     try {
       // Check if file is corrupted with JS code
-      const header = fs.readFileSync(DB_PATH, 'utf8').slice(0, 200);
-      if (header.includes('const') || header.includes('function') || 
-          header.includes('module.exports') || header.includes('AdmZip')) {
-        console.error('❌ Corrupted database file detected (contains JS code). Recreating...');
+      const buffer = fs.readFileSync(DB_PATH);
+      const header = buffer.toString('utf8', 0, 16);
+      
+      // SQLite files start with "SQLite format 3\0"
+      if (!header.includes('SQLite format 3')) {
+        console.error('❌ Corrupted database file detected. Recreating...');
         fs.unlinkSync(DB_PATH);
-      } else {
-        // Test if it's a valid SQLite database
-        const testDb = new Database(DB_PATH);
-        testDb.pragma('integrity_check');
-        testDb.close();
-        console.log('✅ Database opened successfully at:', DB_PATH);
-        return new Database(DB_PATH);
+        return createNewDatabase();
       }
+      
+      // Test if it's a valid SQLite database
+      const testDb = new Database(DB_PATH);
+      testDb.pragma('integrity_check');
+      testDb.close();
+      console.log('✅ Database opened successfully at:', DB_PATH);
+      return new Database(DB_PATH);
+      
     } catch (err) {
       console.error('❌ Database error:', err.message);
       if (fs.existsSync(DB_PATH)) {
@@ -52,17 +49,21 @@ function initDatabase() {
           console.error('Failed to delete corrupted file:', unlinkErr.message);
         }
       }
+      return createNewDatabase();
     }
   }
   
-  // Create fresh database
+  return createNewDatabase();
+}
+
+function createNewDatabase() {
   console.log('✅ Creating new database at:', DB_PATH);
   const newDb = new Database(DB_PATH);
   newDb.pragma('journal_mode = WAL');
   return newDb;
 }
 
-const db = initDatabase();
+db = initDatabase();
 
 // ── Tables ──────────────────────────────────────────────
 db.exec(`
@@ -75,6 +76,11 @@ db.exec(`
     otp_expires_at  INTEGER,
     otp_last_sent_at INTEGER,
     plan            TEXT NOT NULL DEFAULT 'none',
+    coins           INTEGER NOT NULL DEFAULT 0,
+    is_admin        INTEGER NOT NULL DEFAULT 0,
+    referral_code   TEXT,
+    referred_by     INTEGER,
+    referral_rewarded_at INTEGER,
     created_at      INTEGER NOT NULL
   );
 
@@ -87,36 +93,40 @@ db.exec(`
     status               TEXT NOT NULL DEFAULT 'pending',
     heroku_app_url       TEXT,
     failure_message      TEXT,
+    coins_charged        INTEGER NOT NULL DEFAULT 0,
     created_at           INTEGER NOT NULL,
     updated_at           INTEGER NOT NULL
   );
 `);
 
 // ── Lightweight migrations ──────────────────────────────
-// Additive only (new columns), so an existing platform.db from an
-// earlier version of this app keeps working without a manual reset.
 function ensureColumn(table, column, definition) {
   const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
   if (!cols.includes(column)) {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }
 }
+
 ensureColumn('users', 'coins', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('users', 'referral_code', 'TEXT');
 ensureColumn('users', 'referred_by', 'INTEGER');
 ensureColumn('users', 'referral_rewarded_at', 'INTEGER');
 ensureColumn('deployments', 'coins_charged', 'INTEGER NOT NULL DEFAULT 0');
+
+db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
 db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_deployments_user_id ON deployments(user_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_deployments_status ON deployments(status)`);
 
 // Backfill referral codes for any pre-existing rows that predate the column.
+function generateReferralCode() {
+  return crypto.randomBytes(4).toString('hex');
+}
+
 const missingCode = db.prepare(`SELECT id FROM users WHERE referral_code IS NULL`).all();
 for (const row of missingCode) {
   db.prepare(`UPDATE users SET referral_code = ? WHERE id = ?`).run(generateReferralCode(), row.id);
-}
-
-function generateReferralCode() {
-  return crypto.randomBytes(4).toString('hex'); // 8 hex chars
 }
 
 // ── Users ───────────────────────────────────────────────
@@ -178,9 +188,6 @@ function addCoins(userId, amount) {
   return getUserById(userId);
 }
 
-// Atomic check-then-deduct — safe because better-sqlite3 runs
-// synchronously, so no other request can interleave between the read
-// and the write within this function.
 function deductCoinsIfSufficient(userId, amount) {
   const user = getUserById(userId);
   if (!user || user.coins < amount) return false;
@@ -188,7 +195,6 @@ function deductCoinsIfSufficient(userId, amount) {
   return true;
 }
 
-// Rewards the referrer once, the first time the referred user verifies.
 function rewardReferrerIfDue(newUser, bonusCoins) {
   if (!newUser.referred_by || newUser.referral_rewarded_at) return;
   addCoins(newUser.referred_by, bonusCoins);
@@ -200,9 +206,6 @@ function countReferrals(userId) {
 }
 
 // ── Deployments ─────────────────────────────────────────
-// Note what is *not* stored here: SESSION_ID and any other env values the
-// user enters are forwarded straight to Heroku's API and never written to
-// this database — only metadata about the deployment attempt is kept.
 
 function createDeployment({ userId, botSlug, appName, herokuAppSetupId, coinsCharged = 0 }) {
   const now = Date.now();
@@ -251,7 +254,25 @@ function countActiveDeploymentsForBot(botSlug) {
   `).get(botSlug).n;
 }
 
+// ── Admin Functions ──────────────────────────────────
+function getAllUsers() {
+  return db.prepare(`SELECT * FROM users ORDER BY created_at DESC`).all();
+}
+
+function getTotalUsers() {
+  return db.prepare(`SELECT COUNT(*) AS count FROM users`).get().count;
+}
+
+function getTotalDeployments() {
+  return db.prepare(`SELECT COUNT(*) AS count FROM deployments`).get().count;
+}
+
+function getActiveDeployments() {
+  return db.prepare(`SELECT COUNT(*) AS count FROM deployments WHERE status = 'succeeded'`).get().count;
+}
+
 module.exports = {
+  db,
   createUser,
   getUserById,
   getUserByEmail,
@@ -271,4 +292,8 @@ module.exports = {
   listDeploymentsForUser,
   getDeploymentStatsForUser,
   countActiveDeploymentsForBot,
+  getAllUsers,
+  getTotalUsers,
+  getTotalDeployments,
+  getActiveDeployments,
 };
