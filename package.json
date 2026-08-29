@@ -8,8 +8,10 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node scripts/fix-db.js && node server.js",
+    "dev": "node scripts/fix-db.js && nodemon server.js",
+    "fix-db": "node scripts/fix-db.js",
+    "vercel-build": "node scripts/fix-db.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
