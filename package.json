@@ -11,11 +11,12 @@
     "start": "node scripts/fix-db.js && node server.js",
     "dev": "node scripts/fix-db.js && nodemon server.js",
     "fix-db": "node scripts/fix-db.js",
-    "vercel-build": "node scripts/fix-db.js"
+    "vercel-build": "node scripts/fix-db.js",
+    "postinstall": "node scripts/fix-db.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.3.0",
+    "sqlite3": "^5.1.7",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
