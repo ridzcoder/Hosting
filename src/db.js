@@ -1,20 +1,70 @@
 // SQLite is used here for zero-config local/dev storage — a single file
 // on disk, nothing to install or provision.
 //
-// IMPORTANT if you deploy this platform itself to Heroku: Heroku's dyno
+// IMPORTANT if you deploy this platform itself to Vercel: Vercel's serverless
 // filesystem is ephemeral AND read-only outside /tmp, so a SQLite file
 // here gets wiped (or fails to write at all) on every restart or deploy.
-// Swap this file for Heroku Postgres (the `pg` package) before you rely
-// on this in production — every route only calls the functions exported
+// Swap this file for Vercel Postgres (the `@vercel/postgres` package) before 
+// you rely on this in production — every route only calls the functions exported
 // below, so that swap stays contained to this one file. See README.md.
 
 const path = require('path');
 const crypto = require('crypto');
 const Database = require('better-sqlite3');
+const fs = require('fs');
 
-const db = new Database(path.join(__dirname, '..', 'data', 'platform.db'));
-db.pragma('journal_mode = WAL');
+// ── Vercel-specific database path ──────────────────────
+// Vercel: Only /tmp is writable. SQLite must live there.
+const DB_DIR = process.env.VERCEL ? '/tmp' : path.join(__dirname, '..', 'data');
+const DB_PATH = path.join(DB_DIR, 'platform.db');
 
+// Ensure the directory exists (for /tmp it always exists)
+if (!process.env.VERCEL && !fs.existsSync(DB_DIR)) {
+  fs.mkdirSync(DB_DIR, { recursive: true });
+}
+
+// ── Initialize or recover database ──────────────────────
+function initDatabase() {
+  // If database exists, try to open it
+  if (fs.existsSync(DB_PATH)) {
+    try {
+      // Check if file is corrupted with JS code
+      const header = fs.readFileSync(DB_PATH, 'utf8').slice(0, 200);
+      if (header.includes('const') || header.includes('function') || 
+          header.includes('module.exports') || header.includes('AdmZip')) {
+        console.error('❌ Corrupted database file detected (contains JS code). Recreating...');
+        fs.unlinkSync(DB_PATH);
+      } else {
+        // Test if it's a valid SQLite database
+        const testDb = new Database(DB_PATH);
+        testDb.pragma('integrity_check');
+        testDb.close();
+        console.log('✅ Database opened successfully at:', DB_PATH);
+        return new Database(DB_PATH);
+      }
+    } catch (err) {
+      console.error('❌ Database error:', err.message);
+      if (fs.existsSync(DB_PATH)) {
+        try {
+          fs.unlinkSync(DB_PATH);
+          console.log('🗑️ Deleted corrupted database file');
+        } catch (unlinkErr) {
+          console.error('Failed to delete corrupted file:', unlinkErr.message);
+        }
+      }
+    }
+  }
+  
+  // Create fresh database
+  console.log('✅ Creating new database at:', DB_PATH);
+  const newDb = new Database(DB_PATH);
+  newDb.pragma('journal_mode = WAL');
+  return newDb;
+}
+
+const db = initDatabase();
+
+// ── Tables ──────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
