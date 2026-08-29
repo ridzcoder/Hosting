@@ -1,0 +1,23 @@
+<%- include('partials/head') %>
+<div class="shell">
+  <%- include('partials/nav') %>
+  <main class="main">
+    <div class="status-hero" id="statusHero">
+      <div class="spinner" id="statusSpinner"></div>
+      <div>
+        <h1 style="margin-bottom:2px" id="statusHeading">Deploying <%= bot ? bot.name : deployment.bot_slug %></h1>
+        <p style="margin:0" id="statusSub"><span class="mono"><%= deployment.app_name %></span>.herokuapp.com</p>
+      </div>
+    </div>
+
+    <div class="console" id="console">
+      <div class="console-line"><span class="t">[00:00]</span><span class="msg">Setup created on Heroku (id: <%= deployment.heroku_app_setup_id || 'n/a' %>)</span></div>
+      <div class="console-line"><span class="t">[00:01]</span><span class="msg">Waiting for Heroku to build <%= deployment.app_name %><span class="console-cursor"></span></span></div>
+    </div>
+
+    <div id="statusActions" style="margin-top:20px;display:none" class="btn-row"></div>
+  </main>
+</div>
+<script>window.DEPLOYMENT_ID = <%= deployment.id %>;</script>
+<script src="/js/deploy-status.js"></script>
+<%- include('partials/foot') %>

@@ -1,0 +1,58 @@
+<%- include('partials/head') %>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="brand"><%= siteName %><span class="dot">.</span></div>
+    <h1>Check your email</h1>
+    <p class="auth-sub">Enter the 6-digit code we sent to <strong><%= email %></strong>.</p>
+
+    <% if (flash) { %>
+      <div class="alert alert-<%= flash.type %>"><%= flash.message %></div>
+    <% } %>
+
+    <form method="POST" action="/verify">
+      <input type="hidden" name="email" value="<%= email %>">
+      <div class="field">
+        <label for="code">Verification code</label>
+        <input type="text" id="code" name="code" class="otp-input mono-field" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" required autofocus>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Verify</button>
+    </form>
+
+    <div class="resend-row">
+      <span style="color:var(--text-faint)">Didn't get it?</span>
+      <form method="POST" action="/verify/resend" id="resendForm">
+        <input type="hidden" name="email" value="<%= email %>">
+        <button type="submit" id="resendBtn">Resend code</button>
+      </form>
+    </div>
+
+    <div class="auth-foot"><a href="/login">Back to login</a></div>
+  </div>
+</div>
+<script>
+  (function () {
+    var btn = document.getElementById('resendBtn');
+    var form = document.getElementById('resendForm');
+    var cooldown = 60;
+
+    function startCooldown() {
+      var remaining = cooldown;
+      btn.disabled = true;
+      var tick = setInterval(function () {
+        remaining -= 1;
+        if (remaining <= 0) {
+          clearInterval(tick);
+          btn.disabled = false;
+          btn.textContent = 'Resend code';
+        } else {
+          btn.textContent = 'Resend in ' + remaining + 's';
+        }
+      }, 1000);
+    }
+
+    form.addEventListener('submit', function () {
+      startCooldown();
+    });
+  })();
+</script>
+<%- include('partials/foot') %>

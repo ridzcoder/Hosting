@@ -1,0 +1,31 @@
+<%- include('partials/head') %>
+<div class="shell">
+  <%- include('partials/nav') %>
+  <main class="main">
+    <h1>Deploy a bot</h1>
+    <p>Pick a bot below, fill in its config, and deploy it straight to Heroku.</p>
+
+    <% if (flash) { %>
+      <div class="alert alert-<%= flash.type %>"><%= flash.message %></div>
+    <% } %>
+
+    <div class="header-row" style="margin-bottom:8px">
+      <span class="balance-chip">🪙 <%= user.coins %> JC</span>
+      <a href="/topup" class="btn btn-secondary" style="width:auto;padding:9px 16px">Buy coins</a>
+    </div>
+
+    <div class="step-label">Available bots (<%= bots.length %>)</div>
+    <div class="bot-grid">
+      <% bots.forEach(function(bot) { %>
+        <a class="bot-card" href="/deploy/<%= bot.slug %>">
+          <div class="bot-icon <%= bot.accent === 'amber' ? 'vesper' : (bot.accent === 'teal' ? 'jexploit' : 'nexus') %>"><%= bot.initial %></div>
+          <h3><%= bot.name %></h3>
+          <p class="tagline"><%= bot.tagline %></p>
+          <div class="bot-cost">🪙 <%= bot.costCoins %> JC</div>
+          <div class="bot-active-count"><%= bot.activeCount %> active deploy<%= bot.activeCount === 1 ? '' : 's' %></div>
+        </a>
+      <% }) %>
+    </div>
+  </main>
+</div>
+<%- include('partials/foot') %>

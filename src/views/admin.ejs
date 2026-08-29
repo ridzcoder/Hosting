@@ -1,0 +1,46 @@
+<%- include('partials/head') %>
+<div class="shell">
+  <%- include('partials/nav') %>
+  <main class="main">
+    <h1>Admin</h1>
+    <p>Look up a user by email to view their account and adjust their JC balance.</p>
+
+    <% if (flash) { %>
+      <div class="alert alert-<%= flash.type %>"><%= flash.message %></div>
+    <% } %>
+
+    <form method="GET" action="/admin" class="admin-search">
+      <input type="email" name="email" placeholder="user@example.com" value="<%= searchedEmail %>" required>
+      <button type="submit" class="btn btn-primary" style="width:auto;padding:11px 18px">Search</button>
+    </form>
+
+    <% if (searchedEmail && !lookup) { %>
+      <div class="alert alert-error">No user found with that email.</div>
+    <% } %>
+
+    <% if (lookup) { %>
+      <div class="panel admin-user-card">
+        <div class="panel-title">Account</div>
+        <div class="row"><span class="k">Email</span><span class="v"><%= lookup.email %></span></div>
+        <div class="row"><span class="k">Verified</span><span class="v"><%= lookup.verified ? 'Yes' : 'No' %></span></div>
+        <div class="row"><span class="k">JC balance</span><span class="v"><%= lookup.coins %></span></div>
+        <div class="row"><span class="k">Referrals</span><span class="v"><%= lookup.referralCount %></span></div>
+        <div class="row"><span class="k">Deployments</span><span class="v"><%= lookup.deployStats.total %> total · <%= lookup.deployStats.active %> active</span></div>
+        <div class="row"><span class="k">Joined</span><span class="v"><%= new Date(lookup.created_at).toLocaleDateString() %></span></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Adjust JC balance</div>
+        <form method="POST" action="/admin/add-coins">
+          <input type="hidden" name="email" value="<%= lookup.email %>">
+          <div class="field">
+            <label for="amount">Amount (use a negative number to deduct)</label>
+            <input type="text" id="amount" name="amount" class="mono-field" placeholder="e.g. 25 or -10" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Update balance</button>
+        </form>
+      </div>
+    <% } %>
+  </main>
+</div>
+<%- include('partials/foot') %>

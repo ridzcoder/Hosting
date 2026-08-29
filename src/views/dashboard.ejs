@@ -1,0 +1,76 @@
+<%- include('partials/head') %>
+<div class="shell">
+  <%- include('partials/nav') %>
+  <main class="main">
+    <div class="welcome-eyebrow">Welcome back</div>
+    <h1 class="welcome-heading"><%= user.email.split('@')[0] %> 👋</h1>
+
+    <% if (flash) { %>
+      <div class="alert alert-<%= flash.type %>"><%= flash.message %></div>
+    <% } %>
+
+    <div class="header-row">
+      <span class="balance-chip">🪙 <%= user.coins %> JC</span>
+      <a href="/deploy" class="btn btn-primary" style="width:auto;padding:11px 20px">+ Deploy Bot</a>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card total"><div class="label">Total Bots</div><div class="value"><%= stats.total %></div></div>
+      <div class="stat-card active"><div class="label">Active</div><div class="value"><%= stats.active %></div></div>
+      <div class="stat-card inactive"><div class="label">Inactive</div><div class="value"><%= stats.inactive %></div></div>
+      <div class="stat-card coins"><div class="label">JC Balance</div><div class="value"><%= user.coins %></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Bot slots</div>
+      <div class="slots-row"><span><%= slotsUsed %> used</span><span><%= slotsTotal %> total</span></div>
+      <div class="progress-track"><div class="progress-fill" style="width:<%= Math.min(100, (slotsUsed / slotsTotal) * 100) %>%"></div></div>
+    </div>
+
+    <% if (!deployments.length) { %>
+      <div class="empty-state">
+        <div class="icon">🤖</div>
+        <h3>No bots deployed yet</h3>
+        <p>Get started by deploying your first WhatsApp bot — it only takes a minute.</p>
+        <a href="/deploy" class="btn btn-primary" style="max-width:240px;margin:0 auto">⚡ Deploy your first bot</a>
+      </div>
+    <% } else { %>
+      <div class="step-label">Recent deployments</div>
+      <div class="panel">
+        <% deployments.forEach(function(d) { %>
+          <div class="deploy-row">
+            <div>
+              <div class="app-name"><%= d.app_name %></div>
+              <div class="bot-slug"><%= d.bot_slug %></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="badge badge-<%= d.status %>"><%= d.status %></span>
+              <a href="/deploy/status/<%= d.id %>" style="font-size:12.5px">View</a>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <div class="panel referral-panel">
+      <div class="panel-title">Referral program</div>
+      <p style="margin-bottom:0">Share your link — earn <strong style="color:var(--text)"><%= referralBonus %> JC</strong> for every sign-up, credited once they verify. You've referred <strong style="color:var(--text)"><%= referralCount %></strong> so far.</p>
+      <div class="referral-row">
+        <span class="link-text" id="refLink"><%= referralLink %></span>
+        <button class="copy-btn" id="copyRefBtn" type="button">Copy</button>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+  document.getElementById('copyRefBtn').addEventListener('click', function () {
+    var text = document.getElementById('refLink').textContent;
+    navigator.clipboard.writeText(text).then(function () {
+      var btn = document.getElementById('copyRefBtn');
+      var original = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(function () { btn.textContent = original; }, 1500);
+    });
+  });
+</script>
+<%- include('partials/foot') %>

@@ -1,0 +1,51 @@
+<%- include('partials/head') %>
+<div class="shell">
+  <%- include('partials/nav') %>
+  <main class="main">
+    <h1>Buy coins</h1>
+    <p>Current balance: <strong style="color:var(--text)"><%= user.coins %> JC</strong></p>
+
+    <% if (flash) { %>
+      <div class="alert alert-<%= flash.type %>"><%= flash.message %></div>
+    <% } %>
+
+    <div class="step-label">1. Pick an amount</div>
+    <div class="package-grid">
+      <div class="package-card"><div class="amount">10 JC</div><div class="unit">starter</div></div>
+      <div class="package-card popular"><div class="amount">25 JC</div><div class="unit">most picked</div></div>
+      <div class="package-card"><div class="amount">50 JC</div><div class="unit">good value</div></div>
+      <div class="package-card"><div class="amount">100 JC</div><div class="unit">power user</div></div>
+    </div>
+    <p style="font-size:12.5px;color:var(--text-faint);margin-top:-10px">Pricing isn't automated yet — mention the amount you'd like when you contact support (step 3).</p>
+
+    <div class="step-label">2. Send payment</div>
+    <div class="payment-card">
+      <strong><%= paymentLabel %></strong>
+      <div class="payment-number">
+        <span class="mono"><%= paymentNumber %></span>
+        <button class="copy-btn" id="copyPayBtn" type="button">Copy</button>
+      </div>
+      <ol class="pay-steps">
+        <li>Send your chosen amount to the number above via <%= paymentLabel %>.</li>
+        <li>Keep the confirmation / transaction reference.</li>
+      </ol>
+    </div>
+
+    <div class="step-label" style="margin-top:24px">3. Submit payment proof</div>
+    <div class="panel">
+      <p style="margin-bottom:14px">Email your payment confirmation to <strong style="color:var(--text)"><%= supportEmail %></strong> along with the email address you registered with. Coins are added to your account shortly after.</p>
+      <a href="mailto:<%= supportEmail %>?subject=<%= encodeURIComponent('JC top-up - ' + user.email) %>" class="btn btn-primary" style="max-width:260px">Email payment proof</a>
+    </div>
+  </main>
+</div>
+<script>
+  document.getElementById('copyPayBtn').addEventListener('click', function () {
+    navigator.clipboard.writeText(<%- JSON.stringify(paymentNumber) %>).then(function () {
+      var btn = document.getElementById('copyPayBtn');
+      var original = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(function () { btn.textContent = original; }, 1500);
+    });
+  });
+</script>
+<%- include('partials/foot') %>

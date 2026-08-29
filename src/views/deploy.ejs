@@ -1,0 +1,71 @@
+<%- include('partials/head') %>
+<div class="shell">
+  <%- include('partials/nav') %>
+  <main class="main">
+    <a href="/deploy" style="font-size:12.5px;color:var(--text-faint)">← Back to bot selection</a>
+
+    <div class="deploy-header" style="margin-top:14px">
+      <div class="bot-icon <%= bot.accent === 'amber' ? 'vesper' : (bot.accent === 'teal' ? 'jexploit' : 'nexus') %>"><%= bot.initial %></div>
+      <div>
+        <h1 style="margin-bottom:2px"><%= bot.name %></h1>
+        <p style="margin:0"><span class="mono" style="color:var(--text-faint)"><%= bot.slug %></span></p>
+      </div>
+    </div>
+
+    <% if (flash) { %>
+      <div class="alert alert-<%= flash.type %>"><%= flash.message %></div>
+    <% } %>
+
+    <% if (!canAfford) { %>
+      <div class="balance-warning">
+        <div class="cost-line">Deployment cost: <%= bot.costCoins %> JC · Your balance: <%= user.coins %> JC</div>
+        <a href="/topup" class="btn btn-primary" style="width:auto;padding:9px 16px;display:inline-flex">Buy coins</a>
+      </div>
+    <% } else { %>
+      <div class="panel" style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:var(--text-dim);font-size:13.5px">Deployment cost</span>
+        <span class="bot-cost">🪙 <%= bot.costCoins %> JC</span>
+      </div>
+    <% } %>
+
+    <% if (sessionHelperUrl) { %>
+      <a href="<%= sessionHelperUrl %>" target="_blank" rel="noopener" class="panel" style="display:block;text-decoration:none;color:var(--text)">↗ Get Session ID / View Docs</a>
+    <% } %>
+
+    <form method="POST" action="/deploy/<%= bot.slug %>">
+      <div class="panel">
+        <div class="panel-title">Heroku app</div>
+        <div class="field">
+          <label for="app_name">App name</label>
+          <input type="text" id="app_name" name="app_name" class="mono-field" placeholder="my-<%= bot.slug %>" pattern="[a-z][a-z0-9-]{1,28}[a-z0-9]" required>
+          <div class="hint">Lowercase letters, numbers and dashes only. This becomes your-app-name.herokuapp.com.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Bot configuration</div>
+        <% envFields.forEach(function(field) { %>
+          <div class="field">
+            <label for="env_<%= field.key %>"><%= field.key %><% if (field.required) { %> *<% } %></label>
+            <input
+              type="text"
+              id="env_<%= field.key %>"
+              name="env_<%= field.key %>"
+              class="mono-field"
+              value="<%= field.default %>"
+              placeholder="<%= field.key === 'SESSION_ID' ? 'Paste your paired session string' : 'Value for ' + field.key %>"
+              <%= field.required ? 'required' : '' %>
+            >
+            <% if (field.description) { %><div class="hint"><%= field.description %></div><% } %>
+          </div>
+        <% }) %>
+      </div>
+
+      <div class="btn-row">
+        <a href="/deploy" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary" <%= canAfford ? '' : 'disabled' %>>Deploy to Heroku · <%= bot.costCoins %> JC</button>
+      </div>
+    </form>
+  </main>
+</div>
+<%- include('partials/foot') %>
