@@ -1,0 +1,16 @@
+<nav class="sidebar">
+  <div class="brand"><%= siteName %><span class="dot">.</span></div>
+  <div class="sidebar-nav">
+    <a class="nav-link <%= currentPath === '/dashboard' ? 'active' : '' %>" href="/dashboard">Dashboard</a>
+    <a class="nav-link <%= currentPath === '/deploy' ? 'active' : '' %>" href="/deploy">Deploy Bot</a>
+    <a class="nav-link <%= currentPath === '/topup' ? 'active' : '' %>" href="/topup">Buy Coins</a>
+    <% if (user.is_admin) { %>
+      <a class="nav-link <%= currentPath === '/admin' ? 'active' : '' %>" href="/admin">Admin</a>
+    <% } %>
+  </div>
+  <div class="sidebar-foot">
+    <form method="POST" action="/logout">
+      <button type="submit" class="nav-link" style="background:none;border:none;width:100%;text-align:left;cursor:pointer;font-family:inherit">Sign out</button>
+    </form>
+  </div>
+</nav>
