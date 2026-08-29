@@ -1,0 +1,40 @@
+{
+  "name": "Nexus-1MD",
+  "description": "A lightweight, customizable, multi-functional WhatsApp automation bot built with Baileys.",
+  "repository": "https://github.com/devwhitewizard/nexus-v1md",
+  "keywords": ["whatsapp", "bot", "baileys", "nexus-1md", "automation", "userbot"],
+  "env": {
+    "SESSION_ID": {
+      "description": "Your unique bot session ID string generated on login (starts with NEXUS~).",
+      "required": true,
+      "type": "string"
+    },
+    "SUDO": {
+      "description": "Primary Super-Admin phone number with country code (e.g. 254797715445).",
+      "required": true,
+      "type": "string"
+    },
+    "OWNERS": {
+      "description": "Additional owner phone numbers separated by commas (e.g. 254711111111,254722222222).",
+      "required": false,
+      "type": "string"
+    },
+    "PAIRING_NUMBER": {
+      "description": "Phone number with country code to generate a pairing code instead of scanning a QR code.",
+      "required": false,
+      "type": "string"
+    },
+    "PREFIX": {
+      "description": "Command trigger prefix (default is .)",
+      "required": false,
+      "type": "string",
+      "value": "."
+    },
+    "MODE": {
+      "description": "Bot access mode (public or private).",
+      "required": false,
+      "type": "string",
+      "value": "public"
+    }
+  }
+}
