@@ -1,4 +1,4 @@
-// server.js
+// server.js - Top of file
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
@@ -10,6 +10,9 @@ const DB_PATH = process.env.VERCEL ? '/tmp/platform.db' : path.join(__dirname, '
 console.log(`📁 Database path: ${DB_PATH}`);
 console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 console.log(`🔧 Vercel: ${!!process.env.VERCEL}`);
+
+// Import db with async handling
+const dbModule = require('./src/db');
 
 const { seedAdmin } = require('./src/services/seedAdmin');
 const authRoutes = require('./src/routes/auth');
@@ -32,13 +35,12 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
       secure: process.env.NODE_ENV === 'production',
     },
   })
 );
 
-// Consume the one-shot flash message set by routes via req.session.flash.
 app.use((req, res, next) => {
   res.locals.flash = req.session.flash || null;
   res.locals.siteName = process.env.SITE_NAME || 'Bot Deploy';
@@ -55,9 +57,31 @@ app.use(dashboardRoutes);
 app.use(deployRoutes);
 app.use(adminRoutes);
 
+// Health check
+app.get('/api/health', async (req, res) => {
+  try {
+    const health = await dbModule.checkDatabaseHealth();
+    if (health.healthy) {
+      res.json({ 
+        status: 'healthy', 
+        database: 'connected',
+        path: health.path,
+        vercel: health.vercel,
+        environment: process.env.NODE_ENV || 'development'
+      });
+    } else {
+      res.status(500).json({ 
+        status: 'unhealthy', 
+        error: health.error 
+      });
+    }
+  } catch (err) {
+    res.status(500).json({ status: 'unhealthy', error: err.message });
+  }
+});
+
 app.use((req, res) => res.status(404).render('404', { title: 'Not found' }));
 
-// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).render('500', { title: 'Something went wrong' });
@@ -66,11 +90,24 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 const siteName = process.env.SITE_NAME || 'Bot Deploy';
 
-seedAdmin()
-  .catch((err) => console.error('[admin] seed failed:', err))
-  .finally(() => {
+// Start server
+async function startServer() {
+  try {
+    // Ensure database is initialized
+    await dbModule.ensureInitialized();
+    console.log('✅ Database ready');
+    
+    // Seed admin
+    await seedAdmin();
+    
     app.listen(PORT, () => {
       console.log(`${siteName} running on http://localhost:${PORT}`);
       console.log(`📁 Database: ${DB_PATH}`);
     });
-  });
+  } catch (err) {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  }
+}
+
+startServer();
