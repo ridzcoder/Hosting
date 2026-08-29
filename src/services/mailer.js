@@ -1,48 +1,15 @@
 // src/services/mailer.js
-const nodemailer = require('nodemailer');
+const axios = require('axios');
 
-const isConfigured = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
-let transporter = null;
-
-if (isConfigured) {
-  transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-    // Brevo specific settings
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-    // Brevo uses STARTTLS on port 587
-    tls: {
-      rejectUnauthorized: false
-    }
-  });
-
-  // Verify connection on startup
-  transporter.verify((error) => {
-    if (error) {
-      console.error('❌ SMTP connection failed:', error.message);
-      console.error('   Please check your SMTP credentials');
-    } else {
-      console.log('✅ Brevo SMTP connection successful!');
-      console.log(`📧 Sending emails from: ${process.env.SMTP_FROM}`);
-    }
-  });
-} else {
-  console.warn('⚠️ SMTP not configured. Emails will be printed to console.');
-}
+const isConfigured = Boolean(BREVO_API_KEY);
 
 const siteName = process.env.SITE_NAME || 'Bot Deploy';
 
 async function sendVerificationCode(email, code) {
   const subject = `${siteName} verification code: ${code}`;
-  const text = `Your ${siteName} verification code is ${code}. It expires in 10 minutes.`;
   const html = `
     <!DOCTYPE html>
     <html>
@@ -103,26 +70,38 @@ async function sendVerificationCode(email, code) {
     </html>
   `;
 
-  if (!transporter || !isConfigured) {
+  if (!isConfigured) {
     console.log(`\n📧 [DEV MODE] Verification code for ${email}: ${code}\n`);
     return { devMode: true };
   }
 
   try {
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || `"${siteName}" <no-reply@example.com>`,
-      to: email,
-      subject,
-      text,
-      html,
+    const response = await axios({
+      method: 'post',
+      url: BREVO_API_URL,
+      headers: {
+        'api-key': BREVO_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      data: {
+        sender: {
+          email: process.env.SMTP_FROM?.match(/<(.+)>/)?.[1] || process.env.ADMIN_EMAIL || 'ridzcoder@gmail.com',
+          name: siteName,
+        },
+        to: [{ email }],
+        subject: subject,
+        htmlContent: html,
+      },
+      timeout: 10000,
     });
+
     console.log(`✅ Verification email sent to ${email}`);
-    console.log(`   Message ID: ${info.messageId}`);
+    console.log(`   Message ID: ${response.data.messageId}`);
     return { devMode: false, success: true };
   } catch (error) {
     console.error('❌ Failed to send verification email:', error.message);
     if (error.response) {
-      console.error('   📧 SMTP Response:', error.response);
+      console.error('   📧 API Response:', error.response.data);
     }
     // Fallback: print code so user can still login
     console.log(`📧 [FALLBACK] Verification code for ${email}: ${code}`);
