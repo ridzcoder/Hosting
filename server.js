@@ -1,7 +1,15 @@
+// server.js
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
+const fs = require('fs');
+
+// Check database path
+const DB_PATH = process.env.VERCEL ? '/tmp/platform.db' : path.join(__dirname, 'data', 'platform.db');
+console.log(`📁 Database path: ${DB_PATH}`);
+console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`🔧 Vercel: ${!!process.env.VERCEL}`);
 
 const { seedAdmin } = require('./src/services/seedAdmin');
 const authRoutes = require('./src/routes/auth');
@@ -63,5 +71,6 @@ seedAdmin()
   .finally(() => {
     app.listen(PORT, () => {
       console.log(`${siteName} running on http://localhost:${PORT}`);
+      console.log(`📁 Database: ${DB_PATH}`);
     });
   });
