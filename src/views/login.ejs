@@ -1,0 +1,27 @@
+<%- include('partials/head') %>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="brand"><%= siteName %><span class="dot">.</span></div>
+    <h1>Welcome back</h1>
+    <p class="auth-sub">Log in to deploy and manage your bots.</p>
+
+    <% if (flash) { %>
+      <div class="alert alert-<%= flash.type %>"><%= flash.message %></div>
+    <% } %>
+
+    <form method="POST" action="/login">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" required autofocus>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="Your password" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Log in</button>
+    </form>
+
+    <div class="auth-foot">New here? <a href="/register">Create an account</a></div>
+  </div>
+</div>
+<%- include('partials/foot') %>
