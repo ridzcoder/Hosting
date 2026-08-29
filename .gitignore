@@ -1,0 +1,4 @@
+node_modules/
+.env
+data/platform.db
+data/platform.db-*
