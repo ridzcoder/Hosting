@@ -1,1 +1,36 @@
 
+[
+  {
+    "slug": "vesper-xmd",
+    "name": "Vesper-Xmd",
+    "tagline": "Multi-device WhatsApp bot",
+    "owner": "Kevintech-hub",
+    "repo": "Vesper-Xmd",
+    "branch": "main",
+    "initial": "V",
+    "accent": "amber",
+    "costCoins": 1
+  },
+  {
+    "slug": "jexploit-bot",
+    "name": "Jexploit Bot",
+    "tagline": "Multi-device WhatsApp bot",
+    "owner": "Kevintech-hub",
+    "repo": "Jexploit-Bot",
+    "branch": "main",
+    "initial": "J",
+    "accent": "teal",
+    "costCoins": 1
+  },
+  {
+    "slug": "nexus-v1md",
+    "name": "Nexus-1MD",
+    "tagline": "WhatsApp automation + userbot utility",
+    "owner": "devwhitewizard",
+    "repo": "nexus-v1md",
+    "branch": "main",
+    "initial": "N",
+    "accent": "violet",
+    "costCoins": 1
+  }
+]
