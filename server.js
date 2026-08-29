@@ -22,6 +22,13 @@ const adminRoutes = require('./src/routes/admin');
 
 const app = express();
 
+// ── Trust proxy for Render ─────────────────────────────
+// This fixes the X-Forwarded-For warning from express-rate-limit
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+  console.log('🔒 Trust proxy enabled (Render)');
+}
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'src', 'views'));
 
@@ -96,10 +103,10 @@ async function startServer() {
     // Ensure database is initialized
     await dbModule.ensureInitialized();
     console.log('✅ Database ready');
-    
+
     // Seed admin
     await seedAdmin();
-    
+
     app.listen(PORT, () => {
       console.log(`${siteName} running on http://localhost:${PORT}`);
       console.log(`📁 Database: ${DB_PATH}`);
