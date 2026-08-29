@@ -1,0 +1,122 @@
+/*Kelvin Tech*/
+const AdmZip = require('adm-zip');
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+
+// Repository details
+const REPO_OWNER = 'devwhitewizard';
+const REPO_NAME = 'nexus-md';
+const BRANCH = 'main'; 
+
+/**
+ * Downloads the repository as a ZIP, extracts it, and analyzes the contents.
+ */
+async function fetchAndAnalyzeRepo() {
+    try {
+        console.log(`[🔍] Fetching repository: ${REPO_OWNER}/${REPO_NAME}...`);
+
+        // Construct the ZIP download URL
+        const zipUrl = `https://github.com/${REPO_OWNER}/${REPO_NAME}/archive/refs/heads/${BRANCH}.zip`;
+        const response = await axios({
+            method: 'get',
+            url: zipUrl,
+            responseType: 'arraybuffer', 
+        });
+
+        console.log('[✅] Repository ZIP downloaded successfully.');
+
+        const extractDir = path.join(__dirname, 'temp_repo');
+        if (!fs.existsSync(extractDir)) {
+            fs.mkdirSync(extractDir);
+        }
+
+        // Save the ZIP file temporarily
+        const zipPath = path.join(extractDir, 'repo.zip');
+        fs.writeFileSync(zipPath, response.data);
+        console.log(`[📁] ZIP saved to: ${zipPath}`);
+
+        // Extract the ZIP using AdmZip
+        const zip = new AdmZip(zipPath);
+        zip.extractAllTo(extractDir, true);
+        console.log(`[📂] Repository extracted to: ${extractDir}`);
+
+        const extractedFolders = fs.readdirSync(extractDir).filter(name => 
+            fs.statSync(path.join(extractDir, name)).isDirectory()
+        );
+        const repoRoot = extractedFolders.find(name => name.includes(REPO_NAME)) || extractedFolders[0];
+        const repoPath = path.join(extractDir, repoRoot);
+
+        if (!repoRoot) {
+            throw new Error('Could not find the extracted repository folder.');
+        }
+        console.log(`[📂] Repository root: ${repoPath}`);
+
+        // --- Analyze the extracted code ---
+        console.log('\n[🔎] Analyzing repository structure...');
+
+        const mainIndexPath = path.join(repoPath, 'index.js');
+        if (fs.existsSync(mainIndexPath)) {
+            const stats = fs.statSync(mainIndexPath);
+            console.log(`[✅] Main index.js found. Size: ${(stats.size / 1024).toFixed(2)} KB`);
+        } else {
+            console.log('[❌] No index.js found at the root.');
+        }
+
+        const directoriesToCheck = ['commands', 'lib', 'plugins', 'database', 'assets'];
+        console.log('\n[📂] Key directories found:');
+        let foundDirs = 0;
+        for (const dir of directoriesToCheck) {
+            const dirPath = path.join(repoPath, dir);
+            if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
+                const filesCount = fs.readdirSync(dirPath).length;
+                console.log(`   ✅ ${dir}/ (${filesCount} items)`);
+                foundDirs++;
+            } else {
+                console.log(`   ❌ ${dir}/ (not found)`);
+            }
+        }
+
+        if (foundDirs === 0) {
+            console.log('   No expected directories found. This might not be a standard bot structure.');
+        }
+
+        console.log('\n[📄] Essential configuration files:');
+        const configFiles = ['package.json', 'config.js', '.env.example', 'README.md'];
+        for (const file of configFiles) {
+            const filePath = path.join(repoPath, file);
+            if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+                console.log(`   ✅ ${file} (found)`);
+            } else {
+                console.log(`   ❌ ${file} (not found)`);
+            }
+        }
+
+        if (fs.existsSync(mainIndexPath)) {
+            console.log('\n[📖] Preview of main index.js (first 10 lines):');
+            const content = fs.readFileSync(mainIndexPath, 'utf8');
+            const lines = content.split('\n').slice(0, 10).join('\n');
+            console.log('```');
+            console.log(lines + (content.split('\n').length > 10 ? '\n... (truncated)' : ''));
+            console.log('```');
+        }
+
+        // Clean up the extracted directory (optional)
+        // fs.rmSync(extractDir, { recursive: true, force: true });
+        // console.log(`\n[🧹] Temporary directory cleaned up.`);
+
+        console.log('\n[✅] Analysis complete!');
+
+    } catch (error) {
+        console.error('[❌] An error occurred:');
+        if (error.response) {
+            console.error(`   Status: ${error.response.status}`);
+            console.error(`   Data: ${error.response.data}`);
+        } else {
+            console.error(`   ${error.message}`);
+        }
+    }
+}
+
+// Run the function
+fetchAndAnalyzeRepo();
