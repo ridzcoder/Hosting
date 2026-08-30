@@ -5,8 +5,8 @@ const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 
 // ── Database Path ──────────────────────────────────────
-const DB_DIR = process.env.RENDER ? '/tmp' : path.join(__dirname, '..', 'data');
-const DB_PATH = path.join(DB_DIR, 'platform.db');
+
+const DB_PATH = new Database(path.join(__dirname, '..', 'data', 'platform.db'));
 
 console.log(`📁 Database path: ${DB_PATH}`);
 console.log(`🌍 Platform: ${process.env.RENDER ? 'Render' : 'Local'}`);
