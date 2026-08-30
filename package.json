@@ -18,7 +18,7 @@
     "axios": "latest",
     "fs-extra": "latest",
     "bcryptjs": "latest",
-    "sqlite3": "latest",
+    "sqlite3": "^5.1.7",
     "dotenv": "latest",
     "ejs": "latest",
     "express": "latest",
