@@ -15,16 +15,15 @@
     "postinstall": "node scripts/fix-db.js"
   },
   "dependencies": {
-    "axios": "latest",
-    "fs-extra": "latest",
-    "bcryptjs": "latest",
-    "sqlite3": "^5.1.7",
-    "dotenv": "latest",
-    "ejs": "latest",
-    "express": "latest",
-    "express-rate-limit": "latest",
-    "express-session": "latest",
-    "nodemailer": "latest"
+    "axios": "^1.7.7",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "express-session": "^1.18.0",
+    "nodemailer": "^6.9.14"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"
