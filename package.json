@@ -20,11 +20,11 @@
     "bcryptjs": "latest",
     "sqlite3": "latest",
     "dotenv": "latest",
-    "ejs": "^latest",
+    "ejs": "latest",
     "express": "latest",
     "express-rate-limit": "latest",
     "express-session": "latest",
-    "nodemailer": "^latest"
+    "nodemailer": "latest"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"
