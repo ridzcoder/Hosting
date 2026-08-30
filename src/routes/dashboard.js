@@ -10,7 +10,9 @@ const MAX_BOTS_PER_USER = Number(process.env.MAX_BOTS_PER_USER || 50);
 // ── Dashboard ──────────────────────────────────────────
 router.get('/dashboard', requireAuth, async (req, res) => {
   try {
-    // Get user data (already attached by middleware)
+    console.log(`📊 Loading dashboard for user: ${req.user.email}`);
+    
+    // Get user data
     const user = req.user;
     
     // Get deployments and stats
@@ -19,7 +21,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
     const referralCount = await db.countReferrals(user.id) || 0;
     
     // Build referral link
-    const baseUrl = process.env.BASE_URL || process.env.APP_URL || 'https://hosting-xzkg.onrender.com';
+    const baseUrl = process.env.BASE_URL || process.env.APP_URL || 'https://host.ridzcoder.xyz';
     const referralLink = `${baseUrl}/register?ref=${user.referral_code || ''}`;
 
     // Calculate slots based on plan
@@ -55,7 +57,6 @@ router.get('/dashboard', requireAuth, async (req, res) => {
   }
 });
 
-// ── Top Up Page ────────────────────────────────────────
 router.get('/topup', requireAuth, async (req, res) => {
   try {
     res.render('topup', {
@@ -74,41 +75,6 @@ router.get('/topup', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('❌ Topup error:', error);
     req.session.flash = { type: 'error', message: 'Failed to load page' };
-    res.redirect('/dashboard');
-  }
-});
-
-// ── Deployment Status Page ────────────────────────────
-router.get('/deploy/status/:id', requireAuth, async (req, res) => {
-  try {
-    const deploymentId = parseInt(req.params.id);
-    const deployment = await db.getDeploymentById(deploymentId);
-    
-    if (!deployment) {
-      req.session.flash = { type: 'error', message: 'Deployment not found' };
-      return res.redirect('/dashboard');
-    }
-
-    // Check if deployment belongs to user
-    if (deployment.user_id !== req.user.id) {
-      req.session.flash = { type: 'error', message: 'Access denied' };
-      return res.redirect('/dashboard');
-    }
-
-    res.render('deployment-status', {
-      title: 'Deployment Status',
-      deployment: deployment,
-      user: req.user,
-      siteName: process.env.SITE_NAME || 'JEX HOST',
-      flash: req.session.flash || null,
-      currentPath: req.path
-    });
-    
-    delete req.session.flash;
-    
-  } catch (error) {
-    console.error('❌ Deployment status error:', error);
-    req.session.flash = { type: 'error', message: 'Failed to load deployment' };
     res.redirect('/dashboard');
   }
 });
