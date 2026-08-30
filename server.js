@@ -28,15 +28,19 @@ app.use(express.static(path.join(__dirname, 'src', 'public')));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
-    resave: false,
-    saveUninitialized: false,
+    resave: true,  // Changed to true to ensure session is saved
+    saveUninitialized: true,  // Changed to true for production
     cookie: {
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      domain: process.env.NODE_ENV === 'production' ? 'host.ridzcoder.xyz' : undefined
     },
   })
 );
+
+
 
 app.use((req, res, next) => {
   res.locals.flash = req.session.flash || null;
@@ -49,6 +53,13 @@ app.use((req, res, next) => {
 
 app.get('/', (req, res) => res.redirect(req.session.userId ? '/dashboard' : '/login'));
 
+// ── Debug middleware to log sessions ───────────────────
+app.use((req, res, next) => {
+  console.log(`📝 Request: ${req.method} ${req.path}`);
+  console.log(`🔐 Session ID: ${req.sessionID}`);
+  console.log(`👤 User ID: ${req.session?.userId || 'Not logged in'}`);
+  next();
+});
 app.use(authRoutes);
 app.use(dashboardRoutes);
 app.use(deployRoutes);
