@@ -1,10 +1,10 @@
-// server.js - Updated for better-sqlite3
+// server.js
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
 
-const db = require('./src/db'); // No need for async
+const db = require('./src/db');
 const { seedAdmin } = require('./src/services/seedAdmin');
 const authRoutes = require('./src/routes/auth');
 const dashboardRoutes = require('./src/routes/dashboard');
@@ -55,21 +55,25 @@ app.use(deployRoutes);
 app.use(adminRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
-  const health = db.checkDatabaseHealth();
-  if (health.healthy) {
-    res.json({ 
-      status: 'healthy', 
-      database: 'connected',
-      path: health.path,
-      render: health.render,
-      environment: process.env.NODE_ENV || 'development'
-    });
-  } else {
-    res.status(500).json({ 
-      status: 'unhealthy', 
-      error: health.error 
-    });
+app.get('/api/health', async (req, res) => {
+  try {
+    const health = await db.checkDatabaseHealth();
+    if (health.healthy) {
+      res.json({ 
+        status: 'healthy', 
+        database: 'connected',
+        path: health.path,
+        render: health.render,
+        environment: process.env.NODE_ENV || 'development'
+      });
+    } else {
+      res.status(500).json({ 
+        status: 'unhealthy', 
+        error: health.error 
+      });
+    }
+  } catch (err) {
+    res.status(500).json({ status: 'unhealthy', error: err.message });
   }
 });
 
@@ -83,18 +87,24 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 const siteName = process.env.SITE_NAME || 'Bot Deploy';
 
-// Start server (no async needed for better-sqlite3)
-try {
-  // Seed admin
-  seedAdmin()
-    .catch(err => console.error('[admin] seed failed:', err))
-    .finally(() => {
-      app.listen(PORT, () => {
-        console.log(`${siteName} running on http://localhost:${PORT}`);
-        console.log(`📁 Database: /opt/render/project/src/data/platform.db`);
-      });
+// Start server
+async function startServer() {
+  try {
+    // Ensure database is initialized
+    await db.ensureInitialized();
+    console.log('✅ Database ready');
+
+    // Seed admin
+    await seedAdmin();
+
+    app.listen(PORT, () => {
+      console.log(`${siteName} running on http://localhost:${PORT}`);
+      console.log(`📁 Database: /opt/render/project/src/data/platform.db`);
     });
-} catch (err) {
-  console.error('❌ Failed to start server:', err);
-  process.exit(1);
+  } catch (err) {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  }
 }
+
+startServer();
