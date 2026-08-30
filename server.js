@@ -1,19 +1,10 @@
-// server.js - Top of file
+// server.js - Updated for better-sqlite3
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
-const fs = require('fs');
 
-// Check database path
-const DB_PATH = process.env.VERCEL ? '/tmp/platform.db' : path.join(__dirname, 'data', 'platform.db');
-console.log(`📁 Database path: ${DB_PATH}`);
-console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-console.log(`🔧 Vercel: ${!!process.env.VERCEL}`);
-
-// Import db with async handling
-const dbModule = require('./src/db');
-
+const db = require('./src/db'); // No need for async
 const { seedAdmin } = require('./src/services/seedAdmin');
 const authRoutes = require('./src/routes/auth');
 const dashboardRoutes = require('./src/routes/dashboard');
@@ -23,7 +14,6 @@ const adminRoutes = require('./src/routes/admin');
 const app = express();
 
 // ── Trust proxy for Render ─────────────────────────────
-// This fixes the X-Forwarded-For warning from express-rate-limit
 if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
   console.log('🔒 Trust proxy enabled (Render)');
@@ -65,25 +55,21 @@ app.use(deployRoutes);
 app.use(adminRoutes);
 
 // Health check
-app.get('/api/health', async (req, res) => {
-  try {
-    const health = await dbModule.checkDatabaseHealth();
-    if (health.healthy) {
-      res.json({ 
-        status: 'healthy', 
-        database: 'connected',
-        path: health.path,
-        vercel: health.vercel,
-        environment: process.env.NODE_ENV || 'development'
-      });
-    } else {
-      res.status(500).json({ 
-        status: 'unhealthy', 
-        error: health.error 
-      });
-    }
-  } catch (err) {
-    res.status(500).json({ status: 'unhealthy', error: err.message });
+app.get('/api/health', (req, res) => {
+  const health = db.checkDatabaseHealth();
+  if (health.healthy) {
+    res.json({ 
+      status: 'healthy', 
+      database: 'connected',
+      path: health.path,
+      render: health.render,
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } else {
+    res.status(500).json({ 
+      status: 'unhealthy', 
+      error: health.error 
+    });
   }
 });
 
@@ -97,24 +83,18 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 const siteName = process.env.SITE_NAME || 'Bot Deploy';
 
-// Start server
-async function startServer() {
-  try {
-    // Ensure database is initialized
-    await dbModule.ensureInitialized();
-    console.log('✅ Database ready');
-
-    // Seed admin
-    await seedAdmin();
-
-    app.listen(PORT, () => {
-      console.log(`${siteName} running on http://localhost:${PORT}`);
-      console.log(`📁 Database: ${DB_PATH}`);
+// Start server (no async needed for better-sqlite3)
+try {
+  // Seed admin
+  seedAdmin()
+    .catch(err => console.error('[admin] seed failed:', err))
+    .finally(() => {
+      app.listen(PORT, () => {
+        console.log(`${siteName} running on http://localhost:${PORT}`);
+        console.log(`📁 Database: /opt/render/project/src/data/platform.db`);
+      });
     });
-  } catch (err) {
-    console.error('❌ Failed to start server:', err);
-    process.exit(1);
-  }
+} catch (err) {
+  console.error('❌ Failed to start server:', err);
+  process.exit(1);
 }
-
-startServer();
