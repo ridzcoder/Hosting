@@ -5,8 +5,9 @@ const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 
 // ── Database Path ──────────────────────────────────────
-
-const DB_PATH = new Database(path.join(__dirname, '..', 'data', 'platform.db'));
+// Use data/ folder for both local and Render
+const DB_DIR = path.join(__dirname, '..', 'data');
+const DB_PATH = path.join(DB_DIR, 'platform.db');
 
 console.log(`📁 Database path: ${DB_PATH}`);
 console.log(`🌍 Platform: ${process.env.RENDER ? 'Render' : 'Local'}`);
@@ -126,6 +127,7 @@ async function initializeDatabase() {
     await createIndexes();
     
     dbInitialized = true;
+    console.log('✅ Database ready');
     return db;
   } catch (err) {
     console.error('❌ Database initialization error:', err);
@@ -348,6 +350,8 @@ initializeDatabase().catch(err => {
 
 module.exports = {
   db,
+  ensureInitialized,
+  checkDatabaseHealth,
   createUser,
   getUserById,
   getUserByEmail,
@@ -364,6 +368,4 @@ module.exports = {
   getDeploymentById,
   updateDeploymentStatus,
   listDeploymentsForUser,
-  checkDatabaseHealth,
-  ensureInitialized,
 };
