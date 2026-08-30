@@ -226,65 +226,68 @@ router.get('/login', (req, res) => {
   delete req.session.flash;
 });
 
+// src/routes/auth.js - Fix the login route
 router.post('/login', authLimiter, async (req, res) => {
   try {
     const email = String(req.body.email || '').trim().toLowerCase();
     const password = String(req.body.password || '');
 
-    // Get user from database
+    console.log(`🔑 Login attempt: ${email}`);
+
     const user = await db.getUserByEmail(email);
     
-    // Check if user exists
     if (!user) {
+      console.log('❌ User not found');
       flash(req, 'error', 'Incorrect email or password.');
       return res.redirect('/login');
     }
 
-    // Check if password_hash exists
     if (!user.password_hash) {
-      console.error(`⚠️ User ${email} has no password_hash. Please reset password.`);
+      console.error(`⚠️ User ${email} has no password_hash`);
       flash(req, 'error', 'Account setup incomplete. Please contact support.');
       return res.redirect('/login');
     }
 
-    // Compare passwords
-    let isValidPassword = false;
-    try {
-      isValidPassword = await bcrypt.compare(password, user.password_hash);
-    } catch (err) {
-      console.error('❌ bcrypt error:', err.message);
-      flash(req, 'error', 'Login failed. Please try again.');
-      return res.redirect('/login');
-    }
-
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
+      console.log('❌ Invalid password');
       flash(req, 'error', 'Incorrect email or password.');
       return res.redirect('/login');
     }
 
-    // Check if email is verified
     if (!user.verified) {
+      console.log('⚠️ User not verified, sending OTP');
       const { code, expiresAt } = otp.buildOtp();
       await db.setOtp(user.id, { code, expiresAt });
       try {
         await mailer.sendVerificationCode(email, code);
-        console.log(`📧 New verification code sent to ${email}: ${code}`);
       } catch (err) {
         console.error('❌ Email error:', err.message);
-        // Continue anyway - code is logged
       }
       req.session.pendingEmail = email;
       flash(req, 'error', 'Verify your email first — we just sent a fresh code.');
       return res.redirect('/verify');
     }
 
-    // Login successful
+    // ✅ Set session properly
     req.session.userId = user.id;
     req.session.userEmail = user.email;
     req.session.isAdmin = user.is_admin || 0;
     
-    flash(req, 'success', `Welcome back, ${user.email}!`);
-    res.redirect(user.is_admin ? '/admin' : '/dashboard');
+    // Save session explicitly
+    req.session.save((err) => {
+      if (err) {
+        console.error('❌ Session save error:', err);
+        flash(req, 'error', 'Login failed. Please try again.');
+        return res.redirect('/login');
+      }
+      
+      console.log(`✅ User logged in: ${user.email}, ID: ${user.id}`);
+      console.log(`🔐 Session ID: ${req.sessionID}`);
+      
+      flash(req, 'success', `Welcome back, ${user.email}!`);
+      res.redirect(user.is_admin ? '/admin' : '/dashboard');
+    });
     
   } catch (error) {
     console.error('❌ Login error:', error);
