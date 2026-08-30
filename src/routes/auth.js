@@ -77,24 +77,29 @@ router.post('/register', authLimiter, async (req, res) => {
 
 // ── Verify ──────────────────────────────────────────────
 
-router.get('/verify', (req, res) => {
-  const email = req.query.email || req.session.pendingEmail || '';
-  res.render('verify', { title: 'Verify your email', email });
-});
-
 router.post('/verify', authLimiter, (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const code = String(req.body.code || '').trim();
+
+  console.log(`🔍 Verifying: ${email} with code: ${code}`);
 
   const user = db.getUserByEmail(email);
   if (!user) {
     flash(req, 'error', 'We could not find that account. Please register again.');
     return res.redirect('/register');
   }
+
+  console.log(`👤 User found: ${user.email}`);
+  console.log(`   Stored OTP: ${user.otp_code}`);
+  console.log(`   Expires at: ${new Date(user.otp_expires_at).toISOString()}`);
+  console.log(`   Current time: ${new Date().toISOString()}`);
+  console.log(`   Is expired: ${otp.isExpired(user.otp_expires_at)}`);
+
   if (otp.isExpired(user.otp_expires_at)) {
     flash(req, 'error', 'That code expired. Request a new one below.');
     return res.redirect(`/verify?email=${encodeURIComponent(email)}`);
   }
+  
   if (code !== user.otp_code) {
     flash(req, 'error', 'That code is incorrect.');
     return res.redirect(`/verify?email=${encodeURIComponent(email)}`);
